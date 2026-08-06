@@ -1,206 +1,249 @@
-# Write a SQL query to summarize the total sales and quantities sold per product by the company.
+-- create database ECom;
 
-select ProductID, 
-sum(QuantityPurchased) as TotalUnitsSold, 
-Round(sum(Price*QuantityPurchased), 2) as TotalSales 
-from sales_transaction
-group by Productid
-order by TotalSales desc 
- ;
- 
- 
- # Write a SQL query to count the number of transactions per customer to understand purchase frequency.
- 
- select 
-customerid, 
-count(transactionid) as NumberOfTransactions 
-from sales_transaction
-group by customerid
-order by NumberOfTransactions desc
+use Ecom;
+
+-- Problem statement 1
+-- Identify the top 3 cities with the highest number of customers to 
+-- determine key markets for targeted marketing and logistic optimization.
+-- and 
+-- As per the last query's result, Which of the cities must be focused as a part of marketing strategies?
+
+select location,
+count(customer_id)  
+as number_of_customers
+from customers
+group by location
+order by number_of_customers desc
+limit 3
 ;
 
+-- Problem statement 2
+-- Determine how many customers fall into each order frequency 
+-- category based on the number of orders they have placed.
 
-# Write a SQL query to evaluate the performance of the product categories 
-# based on the total sales which help us understand the product categories 
-# which needs to be promoted in the marketing campaigns
+-- Using the Orders table, calculate the number of customers who 
+-- placed 1 order, 2 orders, 3 orders, etc.
 
-select p.Category,
-sum(s.QuantityPurchased) as totalUnitsSold, 
-round(sum(s.price  * s.QuantityPurchased ), 2)as TotalSales
-from product_inventory as p 
-join sales_transaction as s 
-on p.productid = s.productid
-group by  p.Category
-order by TotalSales desc
-;
+-- and 
+
+-- As per the Engagement Depth Analysis question, 
+-- What is the trend of the number of customers v/s number of orders?
+
+-- and 
+
+-- As per the Engagement Depth Analysis question, 
+-- Which customers category does the company experiences the most?
+
+select NumberOfOrders, 
+count(CustomerCount) as CustomerCount
+from
+
+(select count(order_id) as NumberOfOrders, 
+customer_id as CustomerCount
+from orders 
+group by customer_id
+) 
+as new
+group by NumberOfOrders
+order by NumberOfOrders asc;
 
 
 
-# Write a SQL query to find the top 10 products with the highest total 
-# sales revenue from the sales transactions. This will help the company to 
-# identify the High sales products which needs to be focused to increase 
-# the revenue of the company.
+-- Problem statement = 3
+-- Identify products where the average purchase quantity per order 
+-- is 2 but with a high total revenue, suggesting premium product trends.
 
+-- and 
 
-select productid, 
-round(sum(price*quantitypurchased), 2) as totalRevenue 
-from sales_transaction
-group by productid
+-- Among products with an average purchase quantity of two, 
+-- which ones exhibit the highest total revenue?
+
+select *
+from
+
+(select product_id,
+avg(quantity) as avgQuantity,
+sum(quantity*price_per_unit) as totalRevenue
+
+from  orderdetails
+group by product_id
 order by totalRevenue desc
-limit 10
+
+) as new 
+where avgQuantity = 2 
+order by totalRevenue desc
 ;
 
+-- Problem statement-- 4
+-- For each product category, calculate the unique number of customers 
+-- purchasing from it. This will help understand which categories have 
+-- wider appeal across the customer base.
+
+-- and 
+
+-- As per the last question, Which product category needs more focus as it is in high demand among the customers?
+
+select p.category, 
+count(distinct o.customer_id) as unique_customers
+
+from products as p 
+join orderdetails as od
+on p.product_id = od.product_id
+join orders as o 
+on od.order_id = o.order_id
+group by p.category 
+order by unique_customers desc;
 
 
--- Write a SQL query to find the ten products with the least amount of units sold 
--- from the sales transactions, provided that at least one unit was 
--- sold for those products.
+-- Problem statement -- 5
+-- Analyze the month-on-month percentage change in total sales to identify growth trends.
 
-select 
-productid , 
-sum(quantitypurchased) as TotalUnitsSold
-from sales_transaction
-group by productid
-having sum(quantitypurchased) > 0
-order by TotalUnitsSold asc
-limit 10
-;
+-- and 
 
+-- As per Sales Trend Analysis question, During which month 
+-- did the sales experience the largest decline?
 
--- Write a SQL query to identify the sales trend to understand the revenue pattern of the company.
+-- and 
 
-select
-
-
-date_format(transactiondate, '%Y-%m-%d') as Datetrans, 
-count(transactionID) as transaction_count, 
-sum(quantitypurchased) as TotalUnitsSold, 
-round(sum(Price*quantitypurchased), 2) as TotalSales
-
-
-from sales_transaction
-group by date_format(transactiondate, '%Y-%m-%d')
-order by Datetrans desc
-;
-
--- Write a SQL query to understand the month on month growth rate of sales 
--- of the company which will help understand the growth trend of the company.
+-- As per Sales Trend Analysis question, 
+-- What could be inferred about the sales trend from March to August?
 
 select month, 
-total_sales, 
-lag(total_sales) over(order by month) as previous_month_sales,
-round((total_sales - lag(total_sales) over(order by month))/lag(total_sales) over(order by month)*100, 2) as 
-mom_growth_percentage
-
-from
-
-(select month(transactiondate) as month , 
-round(sum(price*quantitypurchased), 2) as total_sales
-
-
-from sales_transaction 
-group by month(transactiondate)) as new 
-
-order by month;
-
--- Write a SQL query that describes the number of transaction along 
--- with the total amount spent by each customer which are on the higher
--- side and will help us understand the customers who are the high 
--- frequency purchase customers in the company.
-
-
-select customerid, 
-count(transactionid) as NumberOfTransactions, 
-sum(price*quantitypurchased) as TotalSpent
-
-from sales_transaction
-group by customerid
-having count(transactionid) > 10 
-and sum(price*quantitypurchased) > 1000 
-order by TotalSpent desc
-;
-
--- Problem statement
--- Write a SQL query that describes the number of transaction 
--- along with the total amount spent by each customer, which will 
--- help us understand the customers who are occasional customers or
--- have low purchase frequency in the company.
-
--- Hint:
-
--- Use the “Sales_transaction” table.
--- The resulting table must have number of transactions less than or 
--- equal to 2 and corresponding total amount spent on those transactions by related customers.
--- Return the result table of “NumberOfTransactions” in ascending order and “TotalSpent” in descending order.
-
-select customerid, 
-count(transactionid) as NumberOfTransactions, 
-round(sum(price*quantitypurchased), 2) as TotalSpent
-
-from sales_transaction
-group by customerid
-having count(transactionid) <= 2
-order by NumberOfTransactions asc, 
-TotalSpent desc
-;
-
--- Write a SQL query that describes the total number of purchases made by each 
--- customer against each productID to understand the repeat customers in the company.
-
-select
-customerid, 
-productid, 
-count(transactionid) as TimesPurchased
-
-from sales_transaction
-group by customerid, 
-productid
-having count(transactionid) > 1
-order by TimesPurchased desc
-;
-
--- Write a SQL query that describes the duration between the first and the 
--- last purchase of the customer in that particular company to 
--- understand the loyalty of the customer.
-
-select customerid, 
-min(new_date) as firstPurchase, 
-max(new_date) as LastPurchase, 
-
-datediff(max(new_date), min(new_date)) as DaysBetweenPurchases
+Totalsales, 
+round((Totalsales - lag(Totalsales) over(order by month))/ (lag(Totalsales) over(order by month))*100, 2) as 
+PercentChange 
 from
 
 
-(select customerid, 
-str_to_date(Transactiondate, '%Y-%m-%d') as new_date
+(select 
+date_format(order_date, '%Y-%m') as month, 
+sum(total_amount) as Totalsales
+
+from orders 
+group by date_format(order_date, '%Y-%m')) as new 
+group by  month, 
+Totalsales
+;
+
+-- Problem statement - 6
+-- Examine how the average order value changes month-on-month. 
+-- Insights can guide pricing and promotional strategies to enhance order value.
+
+-- and 
+
+-- As per last question, Which month has the highest change in the average order value?
+
+-- 
+
+select month, 
+aov as AvgOrderValue, 
+aov - lag(aov) over(order by month) as ChangeInValue
+
 from 
-sales_transaction) as new 
 
-group by 
-customerid
-having DaysBetweenPurchases > 0
-order by  DaysBetweenPurchases desc
+(select 
+date_format(order_date, '%Y-%m') as month, 
+round(sum(total_amount)/count(*), 2) as AOV
+
+from orders 
+group by date_format(order_date, '%Y-%m'))
+as new 
+group by month
+order by ChangeInValue desc
 ;
 
--- Write an SQL query that segments customers based on the total 
--- quantity of products they have purchased. Also, count the number of 
--- customers in each segment which will help us target a particular 
--- segment for marketing.
+-- Problem statement - 7
+-- Based on sales data, identify products with the fastest turnover rates, 
+-- suggesting high demand and the need for frequent restocking.
 
-CREATE TABLE customer_SEGMENT AS
-SELECT CustomerID,
- CASE WHEN TotalQuantity BETWEEN 1 and 10 THEN "Low"
- WHEN TotalQuantity BETWEEN 11 AND 30 THEN "Med"
- WHEN TotalQuantity > 30 THEN "High"
- ELSE "None" END as CustomerSegment
-FROM
-(SELECT a.CustomerID, sum(b.QuantityPurchased) as TotalQuantity
-FROM customer_profiles a
-JOIN sales_transaction b
-ON a.CustomerID=b.CustomerID
-GROUP by a.CustomerID) as totquant ;
-SELECT CustomerSegment, COUNT(*)
- FROM customer_Segment
- GROUP BY CustomerSegment;
-    
-    
+-- and 
+
+-- As per last question, Which product_id has the highest turnover rates and needs to be restocked frequently?
+
+-- and 
+
+select product_id, 
+count(order_id) as SalesFrequency  
+
+from orderdetails
+group by product_id
+order by  salesfrequency desc
+limit 5;
+
+
+-- Problem statement - 7
+-- List products purchased by less than 40% of the customer base, 
+-- indicating potential mismatches between inventory and customer interest.
+
+-- and 
+
+-- Why might certain products have purchase rates below 40% of the total customer base?
+
+-- and 
+
+-- After running an analysis to identify products purchased by less than 40% of the customer base, 
+-- it was found that a few products have lower purchase rates than expected.
+-- What could be a strategic action to improve the sales of these underperforming products?
+
+
+
+select p.product_id, 
+p.name, 
+count(distinct o.customer_id) as UniqueCustomerCount 
+from Products as p 
+join OrderDetails as od 
+on p.product_id = od.product_id
+join orders as o 
+on od.order_id = o.order_id
+
+group by p.product_id, 
+p.name
+having UniqueCustomerCount < (select count(*) from Customers) *0.4
+
+
+-- Problem statement --- 8
+-- Evaluate the month-on-month growth rate in the customer base to understand the 
+-- effectiveness of marketing campaigns and market expansion efforts.
+
+-- and 
+
+-- As per last question, What can be inferred about the growth trend in the customer base from the result table?
+
+select firstPurchaseMonth, 
+count(distinct customer_id )as 
+TotalNewCustomers
+
+from
+
+(select 
+date_format(min(order_date), '%Y-%m') as firstPurchaseMonth, 
+customer_id
+from orders 
+group by 
+customer_id)
+as new 
+group by firstPurchaseMonth
+order by firstPurchaseMonth asc
+
+ ;
+
+
+-- Problem statement --- 9
+-- Identify the months with the highest sales volume, aiding in planning for 
+-- stock levels, marketing efforts, and staffing in anticipation of peak demand periods.
+
+-- and 
+
+-- As per last question, Which months will require major restocking of product and increased staffs?
+
+select 
+date_format(order_date, '%Y-%m') as month, 
+sum(total_amount)  as TotalSales
+
+from orders 
+group by 
+date_format(order_date, '%Y-%m') 
+order by  TotalSales desc
+limit 3;
+
+
